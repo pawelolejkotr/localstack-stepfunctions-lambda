@@ -1,0 +1,28 @@
+{
+  "Comment": "Wywolanie łańcuchowe: wynik pierwszej funkcji wchodzi jako parametr do drugiej",
+  "StartAt": "PierwszeWywolanie",
+  "States": {
+    "PierwszeWywolanie": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:paramfunc",
+        "Payload": {
+          "name": "dupa"
+        }
+      },
+      "Next": "DrugieWywolanie"
+    },
+    "DrugieWywolanie": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:paramfunc",
+        "Payload": {
+          "name.$": "$.Payload.body"
+        }
+      },
+      "End": true
+    }
+  }
+}
