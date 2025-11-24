@@ -1,8 +1,4 @@
-﻿docker run -d `
-    --name MyLocalstackContainer `
-    -p 4566:4566 `
-    -v /var/run/docker.sock:/var/run/docker.sock `
-    localstack/localstack
+﻿docker run -d --name MyLocalstackContainer-p 4566:4566-v /var/run/docker.sock:/var/run/docker.sock localstack/localstack
 
 $env:AWS_ACCESS_KEY_ID="test"
 $env:AWS_SECRET_ACCESS_KEY="test"

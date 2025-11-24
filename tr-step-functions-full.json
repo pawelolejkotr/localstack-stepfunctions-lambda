@@ -1,0 +1,82 @@
+{
+  "Comment": "Orkiestracja: Prepare -> Process (Loop) -> Aggregate",
+  "StartAt": "PrepareStep",
+  "States": {
+    "PrepareStep": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:gto-logic",
+        "Payload": {
+          "mode": "prepare",
+          "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+          "chunk_size.$": "$.chunk_size"
+        }
+      },
+      "ResultPath": "$.PrepareResult",
+      "Next": "ProcessChunksLoop"
+    },
+    "ProcessChunksLoop": {
+      "Type": "Map",
+      "ItemsPath": "$.PrepareResult.Payload.chunks",
+      "ResultPath": "$.ProcessResults",
+      "Parameters": {
+        "ChunkData.$": "$$.Map.Item.Value",
+        "ContextData.$": "$"
+      },
+      "Iterator": {
+        "StartAt": "CheckType",
+        "States": {
+          "CheckType": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.ChunkData.type",
+                "StringEqualsPath": "$.ContextData.target_type",
+                "Next": "ProcessChunk"
+              }
+            ],
+            "Default": "SkipChunk"
+          },
+          "ProcessChunk": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:gto-logic",
+              "Payload": {
+                "mode": "process",
+                "type.$": "$.ChunkData.type",
+                "items.$": "$.ChunkData.items",
+                "customer_tenant_system_name.$": "$.ContextData.customer_tenant_system_name"
+              }
+            },
+            "OutputPath": "$.Payload",
+            "End": true
+          },
+          "SkipChunk": {
+            "Type": "Pass",
+            "Result": {
+              "skipped": true
+            },
+            "End": true
+          }
+        }
+      },
+      "Next": "AggregateStep"
+    },
+    "AggregateStep": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:gto-logic",
+        "Payload": {
+          "mode": "aggregate",
+          "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+          "output_files.$": "$.ProcessResults[*].output_file"
+        }
+      },
+      "ResultPath": "$.AggregateResult",
+      "End": true
+    }
+  }
+}
