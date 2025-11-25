@@ -1,5 +1,5 @@
 {
-  "Comment": "Orkiestracja: Prepare -> Process (Loop) -> Aggregate",
+  "Comment": "Orkiestracja: Prepare -> Process (Loop)",
   "StartAt": "PrepareStep",
   "States": {
     "PrepareStep": {
@@ -62,20 +62,6 @@
           }
         }
       },
-      "Next": "AggregateStep"
-    },
-    "AggregateStep": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-1:000000000000:function:gto-logic",
-        "Payload": {
-          "mode": "aggregate",
-          "customer_tenant_system_name.$": "$.customer_tenant_system_name",
-          "output_files.$": "$.ProcessResults[*].output_file"
-        }
-      },
-      "ResultPath": "$.AggregateResult",
       "End": true
     }
   }
