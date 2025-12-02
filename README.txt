@@ -36,5 +36,17 @@ Compress-Archive -Path tr-lambda-fun.js -DestinationPath function.zip -Force
 aws --endpoint-url=http://localhost:4566 lambda delete-function --function-name gto-logic
 aws --endpoint-url=http://localhost:4566 lambda create-function --function-name gto-logic --runtime nodejs18.x --role arn:aws:iam::000000000000:role/lambda-role --handler tr-lambda-fun.handler --zip-file fileb://function.zip
 
+aws --endpoint-url=http://localhost:4566 stepfunctions delete-state-machine --state-machine-arn arn:aws:states:us-east-1:000000000000:stateMachine:MyLocalStateMachine
 aws --endpoint-url=http://localhost:4566 iam create-role --role-name MyStepFunctionsRole --assume-role-policy-document file://sfn_assume_role_policy.json --description "Dummy role for LocalStack Step Functions"
 aws --endpoint-url=http://localhost:4566 stepfunctions create-state-machine --name MyLocalStateMachine --definition file://tr-step-functions.json --role-arn arn:aws:iam::000000000000:role/MyStepFunctionsRole --type STANDARD
+
+
+example json to invoke step function
+{
+  "customer_tenant_system_name": "TenantTestowy",
+  "chunk_size": 100,
+  "type": "user",
+  "execution_identification": "exec-12345",
+  "tenant_identification": "tenant-abcde",
+  "requested_by": "admin@firma.com"
+}

@@ -69,7 +69,7 @@ async function handlePrepare(tenantName, chunkSize, execId, tenantId, reqBy) {
         uds_long_token: `token_${tenantId}_${execId}`
     };
 }
-
+//sprawdz czy dostajesz uds_long_token w parametrze
 async function handleProcess(type, items, tenantName, token, execId, tenantId, reqBy) {
     if (!type) throw new Error("Type is required for process mode");
     if (!items || items.length === 0) throw new Error("Items are required for process mode");
