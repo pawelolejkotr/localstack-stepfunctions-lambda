@@ -1,0 +1,171 @@
+{
+  "StartAt": "PrepareStep",
+  "States": {
+    "PrepareStep": {
+      "Next": "ProcessChunksLoop",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ClientExecutionTimeoutException",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Type": "Task",
+      "TimeoutSeconds": 900,
+      "ResultPath": "$.PrepareResult",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:367379483300:function:a204278-oscp-app-uge-gto-export-dev-use1",
+        "Payload": {
+          "mode": "prepare",
+          "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+          "chunk_size.$": "$.chunk_size",
+          "execution_identification.$": "$.execution_identification",
+          "tenant_identification.$": "$.tenant_identification",
+          "requested_by.$": "$.requested_by"
+        }
+      }
+    },
+    "ProcessChunksLoop": {
+      "Type": "Map",
+      "ResultPath": "$.ProcessResults",
+      "Next": "AggregateStep",
+      "Parameters": {
+        "ChunkData.$": "$$.Map.Item.Value",
+        "GlobalInput.$": "$",
+        "GeneratedToken.$": "$.PrepareResult.Payload.uds_long_token"
+      },
+      "ItemsPath": "$.PrepareResult.Payload.chunks",
+      "Iterator": {
+        "StartAt": "CheckType",
+        "States": {
+          "CheckType": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.ChunkData.t",
+                "IsPresent": true,
+                "Next": "ProcessChunk"
+              }
+            ],
+            "Default": "SkipChunk"
+          },
+          "SkipChunk": {
+            "Type": "Pass",
+            "Result": {
+              "skipped": true
+            },
+            "End": true
+          },
+          "ProcessChunk": {
+            "Type": "Task",
+            "End": true,
+            "TimeoutSeconds": 900,
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ClientExecutionTimeoutException",
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException"
+                ],
+                "IntervalSeconds": 2,
+                "MaxAttempts": 6,
+                "BackoffRate": 2
+              }
+            ],
+            "OutputPath": "$.Payload",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "arn:aws:lambda:us-east-1:367379483300:function:a204278-oscp-app-uge-gto-export-dev-use1",
+              "Payload": {
+                "mode": "process",
+                "type.$": "$.ChunkData.t",
+                "items.$": "$.ChunkData.its",
+                "customer_tenant_system_name.$": "$.GlobalInput.customer_tenant_system_name",
+                "uds_long_token.$": "$.GeneratedToken",
+                "execution_identification.$": "$.GlobalInput.execution_identification",
+                "tenant_identification.$": "$.GlobalInput.tenant_identification",
+                "requested_by.$": "$.GlobalInput.requested_by"
+              }
+            }
+          }
+        }
+      }
+    },
+    "AggregateStep": {
+      "Next": "FinalSummary",
+      "Type": "Task",
+      "TimeoutSeconds": 900,
+      "ResultPath": "$.AggregateResult",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ClientExecutionTimeoutException",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:367379483300:function:a204278-oscp-app-uge-gto-export-dev-use1",
+        "Payload": {
+          "mode": "aggregate",
+          "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+          "output_files.$": "$.ProcessResults[*].output_file",
+          "uds_long_token.$": "$.PrepareResult.Payload.uds_long_token",
+          "execution_identification.$": "$.execution_identification",
+          "tenant_identification.$": "$.tenant_identification",
+          "requested_by.$": "$.requested_by"
+        }
+      }
+    },
+    "FinalSummary": {
+      "Type": "Pass",
+      "End": true,
+      "Parameters": {
+        "Step1_Prepare": {
+          "RequestVariables": {
+            "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+            "execution_identification.$": "$.execution_identification",
+            "tenant_identification.$": "$.tenant_identification",
+            "requested_by.$": "$.requested_by",
+            "chunk_size.$": "$.chunk_size"
+          },
+          "LambdaOutput.$": "$.PrepareResult.Payload"
+        },
+        "Step2_Process": {
+          "RequestVariables": {
+            "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+            "execution_identification.$": "$.execution_identification",
+            "tenant_identification.$": "$.tenant_identification",
+            "requested_by.$": "$.requested_by"
+          },
+          "LambdaOutput (Array).$": "$.ProcessResults"
+        },
+        "Step3_Aggregate": {
+          "RequestVariables": {
+            "customer_tenant_system_name.$": "$.customer_tenant_system_name",
+            "execution_identification.$": "$.execution_identification",
+            "tenant_identification.$": "$.tenant_identification",
+            "requested_by.$": "$.requested_by"
+          },
+          "LambdaOutput.$": "$.AggregateResult.Payload"
+        }
+      }
+    }
+  },
+  "Comment": "Orchestration: Prepare -> Process (Loop) -> Aggregate"
+}
+ 
