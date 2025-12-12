@@ -1,0 +1,7 @@
+{
+  "customer_tenant_system_name": "TenantTestowy",
+  "chunk_size": 100,
+  "execution_identification": "exec-12345",
+  "tenant_identification": "tenant-abcde",
+  "requested_by": "admin@firma.com"
+}

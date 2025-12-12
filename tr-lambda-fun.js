@@ -7,7 +7,7 @@ exports.handler = async (event) => {
         customer_tenant_system_name, 
         chunk_size, 
         items, 
-        output_files,
+        process_results,
         uds_long_token,
         execution_identification,
         tenant_identification,
@@ -29,7 +29,7 @@ exports.handler = async (event) => {
                 return await handleProcess(type, items, customer_tenant_system_name, uds_long_token, execution_identification, tenant_identification, requested_by);
             
             case MODES.AGGREGATE:
-                return await handleAggregate(output_files, customer_tenant_system_name, uds_long_token, execution_identification, tenant_identification, requested_by);
+                return await handleAggregate(process_results, customer_tenant_system_name, uds_long_token, execution_identification, tenant_identification, requested_by);
             
             default:
                 throw new Error(`Invalid mode: ${mode}`);
@@ -44,21 +44,21 @@ async function handlePrepare(tenantName, chunkSize, execId, tenantId, reqBy) {
     
     const mockChunks = [
         {
-            type: "user",
-            items: [
+            t: "user",
+            its: [
                 { id: "u1", region: "US", name: "John Doe", comments: "Active" },
                 { id: "u2", region: "EU", name: "Jan Kowalski", comments: "Pending" }
             ]
         },
         {
-            type: "user",
-            items: [
+            t: "user",
+            its: [
                 { id: "u3", region: "US", name: "Alice Smith", comments: "Active" }
             ]
         },
         {
-            type: "group",
-            items: [
+            t: "group",
+            its: [
                 { id: "g1", region: "US", name: "Admins", comments: "System Group" }
             ]
         }
@@ -69,7 +69,7 @@ async function handlePrepare(tenantName, chunkSize, execId, tenantId, reqBy) {
         uds_long_token: `token_${tenantId}_${execId}`
     };
 }
-//sprawdz czy dostajesz uds_long_token w parametrze
+
 async function handleProcess(type, items, tenantName, token, execId, tenantId, reqBy) {
     if (!type) throw new Error("Type is required for process mode");
     if (!items || items.length === 0) throw new Error("Items are required for process mode");
@@ -81,10 +81,21 @@ async function handleProcess(type, items, tenantName, token, execId, tenantId, r
     };
 }
 
-async function handleAggregate(outputFiles, tenantName, token, execId, tenantId, reqBy) {
-    if (!outputFiles) throw new Error("Output files required for aggregate");
+async function handleAggregate(processResults, tenantName, token, execId, tenantId, reqBy) {
+    if (!processResults) throw new Error("Results required for aggregate");
     
+    const validFiles = processResults
+        .filter(item => item && item.output_file)
+        .map(item => item.output_file);
+
+    const errorCount = processResults.filter(item => item.status === "failed").length;
+
     return {
-        output_file: `s3://bucket/final/${tenantName}/FULL_SYNC.json`
+        output_file: `s3://bucket/final/${tenantName}/FULL_SYNC.json`,
+        stats: {
+            total_chunks: processResults.length,
+            successful_chunks: validFiles.length,
+            failed_chunks: errorCount
+        }
     };
 }
